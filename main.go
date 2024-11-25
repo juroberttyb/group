@@ -1,52 +1,17 @@
-package main
+package group
 
 import (
 	"context"
 	"fmt"
-	"sync"
 	"time"
-
-	"github.com/juroberttyb/group/group"
 )
 
 func someTask(ctx context.Context, key string) (any, error) {
-	time.Sleep(1 * time.Second)
 	fmt.Println("run")
+	time.Sleep(1 * time.Second)
 	return "result", nil
 }
 
-func main() {
-	ctx := context.Background()
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	group := group.NewGroup[string, any](group.Options{
-		Timeout: 1 * time.Second,
-	})
-	go func() {
-		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", someTask))
-	}()
-	go func() {
-		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", someTask))
-	}()
-	wg.Wait()
-}
-
-// output (only run someTask once)
-// run
-// result <nil>
-// result <nil>
-// -----------------------------------------------------------
-// concurrently run `Group.Do()` with different keys
-// go func() {
-//     fmt.Println(Group.Do(ctx, "foo", someTask))
-// 	}()
-// go func() {
-//     fmt.Println(Group.Do(ctx, "bar", someTask))}()
-// output
-// runrunresult <nil>
-// result <nil>
 // -----------------------------------------------------------
 // sequentially run `Group.Do()` with the same key
 // fmt.Println(Group.Do(ctx, "foo", someTask))
