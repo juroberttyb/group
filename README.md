@@ -6,13 +6,37 @@ This lib implement ...
 
 Some test cases are modified for better demo experience, for example
 
-- Testcase: ```TestConcurrentSameKey```, ```TestConcurrentDiffKey```, and ```TestConcurrentTotalLimitDiffKey```
+- Testcase: ```TestConcurrentSameKey``` and ```TestConcurrentDiffKey```
     
     Task is updated from
 
     ```
 	task := ... {
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Second)
+		fmt.Println("run")
+		return "result", nil
+	}
+    ``` 
+    
+    to
+
+    ```
+	task := ... {
+		fmt.Println("run")
+		time.Sleep(100 * time.Millisecond)
+		return "result", nil
+	}
+    ```
+
+    for better demo experience.
+
+- Testcase: ```TestConcurrentTotalLimitDiffKey```
+    
+    Task is updated from
+
+    ```
+	task := ... {
+		time.Sleep(time.Second)
 		fmt.Println("run")
 		return "result", nil
 	}

@@ -6,25 +6,25 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
+// TODO: make interface for group package and use mockery for testing
 // TODO: all these tests require assert conditions
 
-// test whether only one function would run while there are two threads spawned with the same key
-// expected output
-// run
-// result <nil>
-// result <nil>
 func TestConcurrentSameKey(t *testing.T) {
-
 	ctx := context.Background()
+
 	group := NewGroup[string, any](Options{
 		Timeout: time.Second,
 	})
 
+	resultCh := make(chan any)
 	task := func(ctx context.Context, key string) (any, error) {
-		fmt.Println("run")
-		time.Sleep(time.Second)
+		t.Log("run")
+		resultCh <- "run"
+		time.Sleep(100 * time.Millisecond)
 		return "result", nil
 	}
 
@@ -32,16 +32,43 @@ func TestConcurrentSameKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", task))
+		val, err := group.Do(ctx, "foo", task)
+		t.Log(val, err)
+		resultCh <- val.(string)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", task))
+		val, err := group.Do(ctx, "foo", task)
+		t.Log(val, err)
+		resultCh <- val.(string)
 	}()
 
-	wg.Wait()
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	result := []any{}
+	for {
+		res, exist := <-resultCh
+		if !exist {
+			break
+		}
+		result = append(result, res)
+	}
+
+	require.Equal(
+		t,
+		[]any{
+			"run",
+			"result",
+			"result",
+		},
+		result,
+		"The two execution results should be the same.",
+	)
 }
 
 // output
@@ -56,8 +83,8 @@ func TestConcurrentDiffKey(t *testing.T) {
 	})
 
 	task := func(ctx context.Context, key string) (any, error) {
-		fmt.Println("run")
-		time.Sleep(time.Second)
+		t.Log("run")
+		time.Sleep(100 * time.Millisecond)
 		return "result", nil
 	}
 
@@ -65,13 +92,13 @@ func TestConcurrentDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", task))
+		t.Log(group.Do(ctx, "foo", task))
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "bar", task))
+		t.Log(group.Do(ctx, "bar", task))
 	}()
 
 	wg.Wait()
@@ -91,16 +118,16 @@ func TestSequentialSameKey(t *testing.T) {
 	wg := sync.WaitGroup{}
 	task := func(ctx context.Context, key string) (any, error) {
 		defer wg.Done()
-		time.Sleep(time.Second)
-		fmt.Println("run")
+		time.Sleep(100 * time.Millisecond)
+		t.Log("run")
 		return "result", nil
 	}
 
 	wg.Add(1)
-	fmt.Println(group.Do(ctx, "foo", task))
+	t.Log(group.Do(ctx, "foo", task))
 
 	wg.Add(1)
-	fmt.Println(group.Do(ctx, "foo", task))
+	t.Log(group.Do(ctx, "foo", task))
 
 	wg.Wait()
 }
@@ -123,18 +150,18 @@ func TestConcurrentLongRunDiffKey(t *testing.T) {
 	task := func(ctx context.Context, key string) (interface{}, error) {
 		defer wg.Done()
 		time.Sleep(10 * time.Second)
-		fmt.Println("run")
+		t.Log("run")
 		return "result", nil
 	}
 
 	wg.Add(1)
 	go func() {
-		fmt.Println(group.Do(ctx, "foo", task))
+		t.Log(group.Do(ctx, "foo", task))
 	}()
 
 	wg.Add(1)
 	go func() {
-		fmt.Println(group.Do(ctx, "bar", task))
+		t.Log(group.Do(ctx, "bar", task))
 	}()
 
 	wg.Wait()
@@ -156,7 +183,7 @@ func TestConcurrentTotalLimitDiffKey(t *testing.T) {
 	)
 
 	task := func(ctx context.Context, key string) (interface{}, error) {
-		fmt.Println("run")
+		t.Log("run")
 		time.Sleep(time.Second)
 		return "result", nil
 	}
@@ -165,19 +192,19 @@ func TestConcurrentTotalLimitDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", task))
+		t.Log(group.Do(ctx, "foo", task))
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "bar", task))
+		t.Log(group.Do(ctx, "bar", task))
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "baz", task))
+		t.Log(group.Do(ctx, "baz", task))
 	}()
 
 	wg.Wait()
@@ -203,7 +230,7 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	)
 
 	task := func(ctx context.Context, key string) (interface{}, error) {
-		fmt.Println("run", key)
+		t.Log("run", key)
 		time.Sleep(time.Second)
 		return "result", nil
 	}
@@ -212,7 +239,7 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println("foo 0",
+		t.Log("foo 0",
 			fmt.Sprint(group.Do(ctx, "foo", task)),
 		)
 	}()
@@ -220,7 +247,7 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println("foo 1",
+		t.Log("foo 1",
 			fmt.Sprint(group.Do(ctx, "foo", task)),
 		)
 	}()
@@ -228,7 +255,7 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println("foo 2",
+		t.Log("foo 2",
 			fmt.Sprint(group.Do(ctx, "foo", task)),
 		)
 	}()
@@ -236,7 +263,7 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println("bar 0",
+		t.Log("bar 0",
 			fmt.Sprint(group.Do(ctx, "bar", task)),
 		)
 	}()
@@ -244,7 +271,7 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println("bar 1",
+		t.Log("bar 1",
 			fmt.Sprint(group.Do(ctx, "bar", task)),
 		)
 	}()

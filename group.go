@@ -72,7 +72,6 @@ type call[T any] struct {
 
 type Func[K comparable, T any] func(ctx context.Context, key K) (value T, err error)
 
-// TODO: key should be hashed, map should use hash
 func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, err error) {
 	// println("function with key", key, "is in")
 
@@ -133,7 +132,7 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 		ctx, cancel = context.WithTimeout(ctx, g.options.Timeout)
 		defer cancel()
 
-		resCh := make(chan models.Result[T], 1)
+		resCh := make(chan models.Result[T])
 		go func() {
 			val, err := fn(ctx, key)
 			resCh <- models.Result[T]{
