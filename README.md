@@ -1,6 +1,8 @@
 # Group
 
-This lib implements logic level caching by using func params as key ```x``` and caches the result ```f(x)=y```, so consecutive calls to ```f(x)``` could receive returned value from the first call to ```f(x)``` call.
+This lib implements logic level caching by using func ```f()``` and its params ```x``` as key, the value is cached in ```f(x) <-> y``` mapping, where ```y=f(x)```.
+
+Consecutive calls to ```f(x)``` receive result from the first call instead of running again.
 
 ## How to use
 
