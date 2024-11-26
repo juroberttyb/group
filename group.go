@@ -70,11 +70,6 @@ type call[T any] struct {
 	err error
 }
 
-type Fx[K comparable, T any] struct {
-	X K
-	F Func[K, T]
-}
-
 type Func[K comparable, T any] func(ctx context.Context, key K) (value T, err error)
 
 func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, err error) {
