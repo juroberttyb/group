@@ -175,12 +175,6 @@ func TestSequentialSameKey(t *testing.T) {
 	)
 }
 
-// concurrently run `Group.Do()` with different keys with long running function
-// output
-// <nil> "timeout"
-// <nil> "timeout"
-// run
-// run
 func TestConcurrentLongRunDiffKey(t *testing.T) {
 	var runMsg = "run"
 
