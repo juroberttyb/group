@@ -30,14 +30,14 @@ type Options struct {
 func NewGroup[K comparable, T any](options Options) *Group[K, T] {
 	return &Group[K, T]{
 		options:      options,
-		inflight:     make(map[K]*call[T]),
-		inflightKeys: make(map[K]int),
+		inflight:     make(map[string]*call[T]),
+		inflightKeys: make(map[string]int),
 	}
 }
 
 // TODO: verify data is hashable, think more on what might go wrong practically
 // This return hash of arbitrary input to be used as inflight key
-func MakeKey(data interface{}) (*string, error) {
+func makeKey(data interface{}) (*string, error) {
 	if data == nil {
 		return nil, models.ErrNilInput
 	}
@@ -59,9 +59,9 @@ func MakeKey(data interface{}) (*string, error) {
 type Group[K comparable, T any] struct {
 	lock          sync.Mutex
 	options       Options
-	inflight      map[K]*call[T]
+	inflight      map[string]*call[T]
 	inflightCount int
-	inflightKeys  map[K]int
+	inflightKeys  map[string]int
 }
 
 type call[T any] struct {
@@ -76,22 +76,26 @@ type Func[K comparable, T any] func(ctx context.Context, key K) (value T, err er
 func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, err error) {
 	// println("function with key", key, "is in")
 
-	g.lock.Lock()
+	hashKey, err := makeKey(key)
+	if err != nil {
+		return value, models.ErrMakingHash
+	}
 
+	g.lock.Lock()
 	// Check inflight limits
 	if g.options.MaxInflight > 0 && g.inflightCount >= g.options.MaxInflight {
 		g.lock.Unlock()
 		return value, models.ErrReachedLimit
 	}
 	// Check inflight-key limits
-	if g.options.MaxInflightPerKey > 0 && g.inflightKeys[key] >= g.options.MaxInflightPerKey {
+	if g.options.MaxInflightPerKey > 0 && g.inflightKeys[*hashKey] >= g.options.MaxInflightPerKey {
 		g.lock.Unlock()
-		return value, models.ErrReachedLimit
+		return value, models.ErrReachedLimitPerKey
 	}
 	// Check if there's already an inflight call for this key
-	if c, exists := g.inflight[key]; exists {
+	if c, exists := g.inflight[*hashKey]; exists {
 		g.inflightCount++
-		g.inflightKeys[key]++
+		g.inflightKeys[*hashKey]++
 		g.lock.Unlock()
 		// println("function with key", key, "is waiting for peer to finish")
 
@@ -104,9 +108,9 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 	c := call[T]{}
 	c.wg = sync.WaitGroup{}
 	c.wg.Add(1)
-	g.inflight[key] = &c
+	g.inflight[*hashKey] = &c
 	g.inflightCount++
-	g.inflightKeys[key]++
+	g.inflightKeys[*hashKey]++
 	g.lock.Unlock()
 
 	// Execute the function
@@ -118,9 +122,9 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 		// Cleanup inflight tracking
 		g.lock.Lock()
 		defer g.lock.Unlock()
-		delete(g.inflight, key)
+		delete(g.inflight, *hashKey)
 		g.inflightCount--
-		g.inflightKeys[key]--
+		g.inflightKeys[*hashKey]--
 	}()
 
 	// Handle timeout
