@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
@@ -35,11 +36,10 @@ func NewGroup[K comparable, T any](options Options) *Group[K, T] {
 	}
 }
 
-// TODO: verify data is hashable, think more on what might go wrong practically
 // This return hash of arbitrary input to be used as inflight key
-func makeKey(data interface{}) (*string, error) {
-	if data == nil {
-		return nil, models.ErrNilInput
+func hash(data []interface{}) (*string, error) {
+	if len(data) == 0 {
+		return nil, models.ErrListEmpty
 	}
 
 	// Serialize the input data to JSON
@@ -70,15 +70,22 @@ type call[T any] struct {
 	err error
 }
 
+type Fx[K comparable, T any] struct {
+	X K
+	F Func[K, T]
+}
+
 type Func[K comparable, T any] func(ctx context.Context, key K) (value T, err error)
 
 func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, err error) {
-	// println("function with key", key, "is in")
-
-	hashKey, err := makeKey(key)
+	hkey, err := hash([]interface{}{
+		key,
+		reflect.ValueOf(fn).Pointer(),
+	})
 	if err != nil {
-		return value, models.ErrMakingHash
+		return value, err
 	}
+	// println("hash info", hashKey, key, reflect.ValueOf(fn).Pointer())
 
 	g.lock.Lock()
 	// Check inflight limits
@@ -87,16 +94,15 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 		return value, models.ErrReachedLimit
 	}
 	// Check inflight-key limits
-	if g.options.MaxInflightPerKey > 0 && g.inflightKeys[*hashKey] >= g.options.MaxInflightPerKey {
+	if g.options.MaxInflightPerKey > 0 && g.inflightKeys[*hkey] >= g.options.MaxInflightPerKey {
 		g.lock.Unlock()
 		return value, models.ErrReachedLimitPerKey
 	}
 	// Check if there's already an inflight call for this key
-	if c, exists := g.inflight[*hashKey]; exists {
+	if c, exists := g.inflight[*hkey]; exists {
 		g.inflightCount++
-		g.inflightKeys[*hashKey]++
+		g.inflightKeys[*hkey]++
 		g.lock.Unlock()
-		// println("function with key", key, "is waiting for peer to finish")
 
 		// Wait for the in-flight call to finish
 		c.wg.Wait()
@@ -107,9 +113,9 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 	c := call[T]{}
 	c.wg = sync.WaitGroup{}
 	c.wg.Add(1)
-	g.inflight[*hashKey] = &c
+	g.inflight[*hkey] = &c
 	g.inflightCount++
-	g.inflightKeys[*hashKey]++
+	g.inflightKeys[*hkey]++
 	g.lock.Unlock()
 
 	// Execute the function
@@ -121,9 +127,9 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 		// Cleanup inflight tracking
 		g.lock.Lock()
 		defer g.lock.Unlock()
-		delete(g.inflight, *hashKey)
+		delete(g.inflight, *hkey)
 		g.inflightCount--
-		g.inflightKeys[*hashKey]--
+		g.inflightKeys[*hkey]--
 	}()
 
 	// Handle timeout

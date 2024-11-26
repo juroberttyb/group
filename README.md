@@ -1,12 +1,25 @@
 # Group
 
-This lib implement ...
+This lib implements logic level caching by using func params as key ```x``` and caches the result ```f(x)=y```, so consecutive calls to ```f(x)``` could receive returned value from the first call to ```f(x)``` call.
 
-##### note
+## How to use
+
+##### please run following command to test the lib
+```
+make unit-test
+```
+
+## Changes to testcase
+
+### Add
+
+Additional testcase ```TestHashDontCollide``` for checking whether ```f(x)``` hashes are generated correctly.
+
+### Update
 
 Some test cases are modified for better demo experience, for example
 
-- Testcase: ```TestConcurrentSameKey``` and ```TestConcurrentDiffKey```
+- Testcase: ```TestConcurrentSameKey```, ```TestConcurrentDiffKey```, and ```TestSequentialSameKey```
     
     Task is updated from
 
@@ -127,3 +140,21 @@ Some test cases are modified for better demo experience, for example
     ```
 
     for better demo experience.
+
+- Testcase: ```TestConcurrentLongRunDiffKey```
+
+    timeout is scaled down from
+
+    ```
+    5  seconds
+    10 seconds
+    ```
+
+    to
+
+    ```
+    1  seconds
+    2  seconds
+    ```
+
+    for faster execution result.
