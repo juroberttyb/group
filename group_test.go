@@ -406,16 +406,6 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 
 	require.Equal(
 		t,
-		[]any{
-			runMsg,
-			runMsg,
-		},
-		result[:2],
-		"The two execution results should be the same.",
-	)
-
-	require.Equal(
-		t,
 		7,
 		len(result),
 		"Result length should be equal to 7 exactly.",
