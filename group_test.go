@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO: better test error handling, err encountered in go routines spawned in tests should cause fatal and stop testing from continuing
 // TODO: make interface for group package and use mockery for testing
 
 func TestConcurrentSameKey(t *testing.T) {
