@@ -6,8 +6,13 @@ Consecutive calls to ```f(x)``` receive result from the first call instead of ru
 
 ## How to use
 
-##### please run following command to test the lib
+#### requirements
+- golang version 1.21 or higher
+
+##### command to test the lib
 ```
+git clone https://github.com/juroberttyb/group.git
+cd group
 make unit-test
 ```
 
