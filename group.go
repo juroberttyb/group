@@ -72,6 +72,7 @@ type call[T any] struct {
 
 type Func[K comparable, T any] func(ctx context.Context, key K) (value T, err error)
 
+// TODO: key should be hashed, map should use hash
 func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, err error) {
 	// println("function with key", key, "is in")
 

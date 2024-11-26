@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// TODO: all these tests require assert conditions
+
 // test whether only one function would run while there are two threads spawned with the same key
 // expected output
 // run
@@ -17,12 +19,12 @@ func TestConcurrentSameKey(t *testing.T) {
 
 	ctx := context.Background()
 	group := NewGroup[string, any](Options{
-		Timeout: 1 * time.Second,
+		Timeout: time.Second,
 	})
 
 	task := func(ctx context.Context, key string) (any, error) {
-		time.Sleep(1 * time.Second)
 		fmt.Println("run")
+		time.Sleep(time.Second)
 		return "result", nil
 	}
 
@@ -50,12 +52,12 @@ func TestConcurrentSameKey(t *testing.T) {
 func TestConcurrentDiffKey(t *testing.T) {
 	ctx := context.Background()
 	group := NewGroup[string, any](Options{
-		Timeout: 1 * time.Second,
+		Timeout: time.Second,
 	})
 
 	task := func(ctx context.Context, key string) (any, error) {
-		time.Sleep(1 * time.Second)
 		fmt.Println("run")
+		time.Sleep(time.Second)
 		return "result", nil
 	}
 
@@ -83,18 +85,24 @@ func TestConcurrentDiffKey(t *testing.T) {
 func TestSequentialSameKey(t *testing.T) {
 	ctx := context.Background()
 	group := NewGroup[string, any](Options{
-		Timeout: 1 * time.Second,
+		Timeout: time.Second,
 	})
 
+	wg := sync.WaitGroup{}
 	task := func(ctx context.Context, key string) (any, error) {
-		time.Sleep(1 * time.Second)
+		defer wg.Done()
+		time.Sleep(time.Second)
 		fmt.Println("run")
 		return "result", nil
 	}
 
+	wg.Add(1)
 	fmt.Println(group.Do(ctx, "foo", task))
+
+	wg.Add(1)
 	fmt.Println(group.Do(ctx, "foo", task))
-	time.Sleep(2 * time.Second)
+
+	wg.Wait()
 }
 
 // concurrently run `Group.Do()` with different keys with long running function
@@ -148,8 +156,8 @@ func TestConcurrentTotalLimitDiffKey(t *testing.T) {
 	)
 
 	task := func(ctx context.Context, key string) (interface{}, error) {
-		time.Sleep(1 * time.Second)
 		fmt.Println("run")
+		time.Sleep(time.Second)
 		return "result", nil
 	}
 
@@ -195,8 +203,8 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	)
 
 	task := func(ctx context.Context, key string) (interface{}, error) {
-		time.Sleep(1 * time.Second)
 		fmt.Println("run", key)
+		time.Sleep(time.Second)
 		return "result", nil
 	}
 
@@ -204,31 +212,41 @@ func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", task))
+		fmt.Println("foo 0",
+			fmt.Sprint(group.Do(ctx, "foo", task)),
+		)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", task))
+		fmt.Println("foo 1",
+			fmt.Sprint(group.Do(ctx, "foo", task)),
+		)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", task))
+		fmt.Println("foo 2",
+			fmt.Sprint(group.Do(ctx, "foo", task)),
+		)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "bar", task))
+		fmt.Println("bar 0",
+			fmt.Sprint(group.Do(ctx, "bar", task)),
+		)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "bar", task))
+		fmt.Println("bar 1",
+			fmt.Sprint(group.Do(ctx, "bar", task)),
+		)
 	}()
 
 	wg.Wait()

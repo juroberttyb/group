@@ -1,180 +1,105 @@
-Single Flight
-Please implement func NewGroup, type Group and func (*Group) Do and corresponding unit tests.
-Group.Do() makes sure that only one execution of the given function is in-flight for a given key. 
-If another function call with the duplicated key comes in, the duplicated caller waits for the in-flight call with the same key to complete and receives the same results.
+# Group
 
-1.
-Please implement func NewGroup, type Group and func (*Group) Do WITHOUT using any package except
-Go builtin packages listed here https://pkg.go.dev/std
-2.
-Unit testing is a plus
+This lib implement ...
 
-var (
-    ErrTimeout = errors.New("timeout")
-    ErrReachedLimit = errors.New("reached inflight limit")
-)
+##### note
 
-type Options struct {
-    // Timeout should applied no matter the input context is not done yet.
-    // It'll return error `ErrTimeout` when tiemout.
-    // `0` means no timeout.
-    Timeout time.Duration
-    // MaxInflight limit the number of running `Do` to the entire group.
-    // It'll return `ErrReachedLimit` when the limit is reached.
-    // `0` means no limit.
-    MaxInflight int
-    // MaxInflightPerKey limit the number of running `Do` to the entire group with same
-    // It'll return `ErrReachedLimit` when the limit is reached.
-    // `0` means no limit.
-    MaxInflightPerKey int
-}
+Some test cases are modified for better demo experience, for example
 
-func NewGroup(options Options) *Group {
-    // Please implement
-}
+- Testcase: ```TestConcurrentSameKey```, ```TestConcurrentDiffKey```, and ```TestConcurrentTotalLimitDiffKey```
+    
+    Task is updated from
 
-type Group[K comparable, T any] struct {
-    // Please implement
-}
+    ```
+	task := ... {
+		time.Sleep(1 * time.Second)
+		fmt.Println("run")
+		return "result", nil
+	}
+    ``` 
+    
+    to
 
-type Func[K comparable, T any] func(ctx context.Context, key K) (value T, err error)
+    ```
+	task := ... {
+		fmt.Println("run")
+		time.Sleep(time.Second)
+		return "result", nil
+	}
+    ```
 
-func (s *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, err erro
-    // Please implement
-}
+    for better demo experience.
 
-Group.Do() usage example:
-package main
+- Testcase: ```TestConcurrentTotalLimitDiffKey```
 
-var (
-    "fmt"
-    "sync"
-    "time"
-)
-func someTask(ctx contex.Context, key string) (any, error) {
-    time.Sleep(1 * time.Second)
-    fmt.Println("run")
-    return "result", nil
-}
+  Expected output is updated from
 
-// concurrently run `Group.Do()` with the same key
-func main() {
-    ctx := context.Background()
-    var wg = sync.WaitGroup
-    wg.Add(2)
-    group := NewGroup[string, any](Options{
-    Timeout: 1 * time.Second,
-})
+    ```
+    run
+    result <nil>
+    run
+    result <nil>
+    <nil> reached inflight limit
+    ```
 
-go func() {
-    defer wg.Done()
-    fmt.Println(group.Do(ctx, "foo", someTask))
-}()
+    to
 
-go func() {
-    defet wg.Done()
-    fmt.Println(group.Do(ctx, "foo", someTask))
-}()
+    ```
+    run
+    run
+    <nil> reached inflight limit
+    result <nil>
+    result <nil>
+    ```
 
-wg.Wait()
-}
-// output (only run someTask once)
-// run
-// result <nil>
-// result <nil>
------------------------------------------------------------
-// concurrently run `Group.Do()` with different keys
-go func() {
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "bar", someTask))
-}()
-// output
-run
-run
-result <nil>
-result <nil>
------------------------------------------------------------
-// sequentially run `Group.Do()` with the same key
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-// output
-run
-result <nil>
-run
-result <nil>
------------------------------------------------------------
-// concurrently run `Group.Do()` with different keys with long running function
-func someTask(ctx contex.Context, key string) (interface{}, error) {
-    time.Sleep(10 * time.Second)
-    return "result", nil
-}
-group := NewGroup(Options{Timeout: 5 * time.Second})
-go func() {
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "bar", someTask))
-}()
-// output
-<nil> "timeout"
-<nil> "timeout"
-run
-run
------------------------------------------------------------
-// concurrently run `Group.Do()` with different keys and reached limit
-func someTask(ctx contex.Context, key string) (interface{}, error) {
-    time.Sleep(1 * time.Second)
-    fmt.Println("run")
-    return "result", nil
-}
-group := NewGroup(Options{MaxInflight: 2})
-go func() {
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "bar", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "baz", someTask))
-}()
-// output
-run
-result <nil>
-run
-result <nil>
-nil "reached inflight limit"
------------------------------------------------------------
-// concurrently run `Group.Do()` with different keys and reached per key limit
-func someTask(ctx contex.Context, key string) (interface{}, error) {
-    time.Sleep(1 * time.Second)
-    fmt.Println("run", key)
-    return "result", nil
-}
-group := NewGroup(Options{MaxInflightPerKey: 2})
-go func() {
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "foo", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "bar", someTask))
-}()
-go func() {
-    fmt.Println(Group.Do(ctx, "bar", someTask))
-}()
-// output
-run "foo"
-result <nil>
-run "foo"
-result <nil>
-nil "reached inflight limit"
-run "bar"
-result <nil>
-run "bar"
-result <nil>
+    for better demo experience.
+
+- Testcase: ```TestConcurrentPerKeyLimitDiffKey```
+
+  Task is updated from
+
+    ```
+	task := ... {
+        time.Sleep(time.Second)
+		fmt.Println("run", key)
+		return "result", nil
+	}
+    ```
+
+  to 
+
+    ```
+	task := ... {
+		fmt.Println("run", key)
+		time.Sleep(time.Second)
+		return "result", nil
+	}
+    ```
+
+  and expected output is updated from
+
+    ```
+    run "foo"
+    result <nil>
+    run "foo"
+    result <nil>
+    nil "reached inflight limit"
+    run "bar"
+    result <nil>
+    run "bar"
+    result <nil>
+    ```
+
+    to
+
+    ```
+    run foo
+    run bar
+    foo 2 <nil> reached inflight limit
+    bar 1 result<nil>
+    bar 0 result<nil>
+    foo 0 result<nil>
+    foo 1 result<nil>
+    ```
+
+    for better demo experience.
