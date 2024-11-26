@@ -73,7 +73,7 @@ type call[T any] struct {
 type Func[K comparable, T any] func(ctx context.Context, key K) (value T, err error)
 
 func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, err error) {
-	println("function with key", key, "is in")
+	// println("function with key", key, "is in")
 
 	g.lock.Lock()
 
@@ -92,7 +92,7 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 		g.inflightCount++
 		g.inflightKeys[key]++
 		g.lock.Unlock()
-		println("function with key", key, "is waiting for peer to finish")
+		// println("function with key", key, "is waiting for peer to finish")
 
 		// Wait for the in-flight call to finish
 		c.wg.Wait()
@@ -127,18 +127,26 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, g.options.Timeout)
 		defer cancel()
+
+		resCh := make(chan models.Result[T], 1)
+		go func() {
+			val, err := fn(ctx, key)
+			resCh <- models.Result[T]{
+				Value: val,
+				Err:   err,
+			}
+		}()
+
+		// FIXME: is there a way to enforce fn to implement listener which receives kill signal?
+		// a failed check in code review would cause infinite running threads to degrade server performance
+		select {
+		case <-ctx.Done():
+			return value, models.ErrTimeout
+		case res := <-resCh:
+			return res.Value, res.Err
+		}
 	}
 
-	// FIXME: is there a way to enforce fn to implement
-	// for {
-	// 	select {
-	// 	case <-ctx.Done():
-	// 	default:
-	// 		value, err = fn(ctx, key)
-	// 	}
-	// }
-	// to listen to kill signal?
-	// relying on only code review, a infinite running will degrade server performance
 	value, err = fn(ctx, key)
 	return
 }

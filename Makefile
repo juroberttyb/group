@@ -12,11 +12,14 @@ deps:
 mocks:
 	./mockery --all --inpackage
 
-unit-test:
-	go test -v -cover -short ./...
+clean-test-cache:
+	go clean -testcache
 
-integration-test:
+unit-test: clean-test-cache
+	go test -v -cover -short -parallel 1 ./...
+
+integration-test: clean-test-cache
 	go test -v -cover -run Integration ./...
 
-full-test:
+full-test: clean-test-cache
 	go test -v -cover ./...

@@ -13,141 +13,223 @@ import (
 // run
 // result <nil>
 // result <nil>
-func TestSameKeyOnlyOneRun(t *testing.T) {
+func TestConcurrentSameKey(t *testing.T) {
 
 	ctx := context.Background()
-	wg := sync.WaitGroup{}
-	wg.Add(2)
 	group := NewGroup[string, any](Options{
 		Timeout: 1 * time.Second,
 	})
+
+	task := func(ctx context.Context, key string) (any, error) {
+		time.Sleep(1 * time.Second)
+		fmt.Println("run")
+		return "result", nil
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", someTask))
+		fmt.Println(group.Do(ctx, "foo", task))
 	}()
+
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", someTask))
+		fmt.Println(group.Do(ctx, "foo", task))
 	}()
+
 	wg.Wait()
-
-	// meetupStore := new(store.MockMeetup)
-
-	// layout := "2006-01-02 15:04:05"
-	// createdAt, err := time.Parse(layout, "2024-01-22 04:06:20")
-	// if err != nil {
-	// 	t.Errorf("err: %s", err)
-	// 	return
-	// }
-	// updatedAt, err := time.Parse(layout, "2024-01-22 04:06:20")
-	// if err != nil {
-	// 	t.Errorf("err: %s", err)
-	// 	return
-	// }
-	// hostingAt, err := time.Parse(layout, "2025-01-22 05:38:39")
-	// if err != nil {
-	// 	t.Errorf("err: %s", err)
-	// 	return
-	// }
-	// meetupStore.On("GetRedirect", mock.Anything).Return([]*models.Meetup{}, nil)
-	// meetupStore.On("GetMeetups", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*models.Meetup{
-	// 	{
-	// 		ID:               "7849583d-197c-48de-b48a-ce81cc26eca2",
-	// 		CreatorID:        "b7c6fc25-0cc8-4b5b-a162-2d784fa9c0d9",
-	// 		IsActive:         true,
-	// 		IsDeleted:        false,
-	// 		Status:           "attending",
-	// 		Title:            "了不起的標題",
-	// 		ParticipantCount: 0,
-	// 		Tags:             []string{},
-	// 		CreatedAt:        createdAt,
-	// 		UpdatedAt:        updatedAt,
-	// 		HostingAt:        hostingAt,
-	// 	},
-	// }, nil)
-	// meetupStore.On("GetMyMeetupIDs", mock.Anything, mock.Anything, mock.Anything).Return([]string{}, nil)
-	// userStore := new(store.MockUser)
-	// userStore.On("Get", mock.Anything, mock.Anything).Return(&models.User{
-	// 	Specialties: []string{"Prosthodontic"},
-	// }, nil)
-	// mediaStore := new(store.MockMedia)
-	// storage := new(store.MockStorage)
-	// notif := new(store.MockNotification)
-	// mq := new(mq.MockMQ)
-	// meetupSvc := NewMeetup(context.Background(), meetupStore, userStore, mediaStore, storage, notif, mq, mq, queue.NewPool(8))
-
-	// meetups, _, err := meetupSvc.GetMeetups(context.Background(), "b3b646b7-7e37-4ed9-a4b3-11503b94763c", "", "", "", "", 10, models.Normal, false)
-	// if err != nil {
-	// 	t.Errorf("err: %s", err)
-	// 	return
-	// }
-	// meetupStore.AssertExpectations(t)
-	// userStore.AssertExpectations(t)
-
-	// for _, m := range meetups {
-	// 	require.Equal(t, m.Status, models.Normal, "status should be normal")
-	// }
 }
 
-func TestConcurrentRunDiffKey(t *testing.T) {
+// output
+// run
+// run
+// result <nil>
+// result <nil>
+func TestConcurrentDiffKey(t *testing.T) {
 	ctx := context.Background()
-	wg := sync.WaitGroup{}
-	wg.Add(2)
 	group := NewGroup[string, any](Options{
 		Timeout: 1 * time.Second,
 	})
+
+	task := func(ctx context.Context, key string) (any, error) {
+		time.Sleep(1 * time.Second)
+		fmt.Println("run")
+		return "result", nil
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "foo", someTask))
+		fmt.Println(group.Do(ctx, "foo", task))
 	}()
 
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		fmt.Println(group.Do(ctx, "bar", someTask))
+		fmt.Println(group.Do(ctx, "bar", task))
 	}()
+
 	wg.Wait()
 }
 
-func TestAggregateMeetupsAllStatus(t *testing.T) {
-	// // Create a new context
-	// ctx := context.Background()
+// output
+// run
+// run
+// result <nil>
+// result <nil>
+func TestSequentialSameKey(t *testing.T) {
+	ctx := context.Background()
+	group := NewGroup[string, any](Options{
+		Timeout: 1 * time.Second,
+	})
 
-	// // Create some meetups
-	// meetups := []*models.Meetup{
-	// 	{ID: "0", Tags: []string{"tag0", "tag1"}},
-	// 	{ID: "1", Tags: []string{"specialty_0", "tag2"}, MeetupType: string(models.Internal)},
-	// 	{ID: "2", Tags: []string{"specialty_0", "tag2"}},
-	// 	{ID: "3", Tags: []string{"tag3"}},
-	// 	{ID: "4", Tags: []string{"tag4"}},
-	// }
-	// uid := "b3b646b7-7e37-4ed9-a4b3-11503b94763c"
+	task := func(ctx context.Context, key string) (any, error) {
+		time.Sleep(1 * time.Second)
+		fmt.Println("run")
+		return "result", nil
+	}
 
-	// meetupStore := new(store.MockMeetup)
-	// meetupStore.On("GetRedirect", mock.Anything).Return([]*models.Meetup{}, nil)
-	// meetupStore.On("GetMyMeetupIDs", mock.Anything, uid, models.Interested).Return([]string{}, nil)
-	// meetupStore.On("GetMyMeetupIDs", mock.Anything, uid, models.Attending).Return([]string{"0"}, nil)
-	// meetupStore.On("GetMyMeetupIDs", mock.Anything, uid, models.Attended).Return([]string{"3"}, nil)
-	// userStore := new(store.MockUser)
-	// userStore.On("Get", mock.Anything, uid).Return(&models.User{
-	// 	Specialties: []string{"specialty_0", "specialty_1"},
-	// }, nil)
-	// mediaStore := new(store.MockMedia)
-	// storage := new(store.MockStorage)
-	// notif := new(store.MockNotification)
-	// mq := new(mq.MockMQ)
-	// meetupSvc := NewMeetup(context.Background(), meetupStore, userStore, mediaStore, storage, notif, mq, mq, queue.NewPool(8))
+	fmt.Println(group.Do(ctx, "foo", task))
+	fmt.Println(group.Do(ctx, "foo", task))
+	time.Sleep(2 * time.Second)
+}
 
-	// // Call the aggregateMeetups function
-	// meetups, err := meetupSvc.AggregateMeetups(ctx, meetups, uid, models.Normal, 0)
-	// if err != nil {
-	// 	t.Errorf("err: %s", err)
-	// 	return
-	// }
+// concurrently run `Group.Do()` with different keys with long running function
+// output
+// <nil> "timeout"
+// <nil> "timeout"
+// run
+// run
+func TestConcurrentLongRunDiffKey(t *testing.T) {
+	ctx := context.Background()
+	group := NewGroup[string, any](
+		Options{
+			Timeout: 5 * time.Second,
+		},
+	)
 
-	// // Check the status of each meetup
-	// require.Equal(t, models.Attending, meetups[0].Status)
-	// require.Equal(t, models.Recommended, meetups[1].Status)
-	// require.Equal(t, models.Normal, meetups[2].Status)
-	// require.Equal(t, models.Attended, meetups[3].Status)
-	// require.Equal(t, models.Normal, meetups[4].Status)
+	wg := sync.WaitGroup{}
+	task := func(ctx context.Context, key string) (interface{}, error) {
+		defer wg.Done()
+		time.Sleep(10 * time.Second)
+		fmt.Println("run")
+		return "result", nil
+	}
+
+	wg.Add(1)
+	go func() {
+		fmt.Println(group.Do(ctx, "foo", task))
+	}()
+
+	wg.Add(1)
+	go func() {
+		fmt.Println(group.Do(ctx, "bar", task))
+	}()
+
+	wg.Wait()
+}
+
+// concurrently run `Group.Do()` with different keys and reached limit
+// output
+// run
+// result <nil>
+// run
+// result <nil>
+// nil "reached inflight limit"
+func TestConcurrentTotalLimitDiffKey(t *testing.T) {
+	ctx := context.Background()
+	group := NewGroup[string, any](
+		Options{
+			MaxInflight: 2,
+		},
+	)
+
+	task := func(ctx context.Context, key string) (interface{}, error) {
+		time.Sleep(1 * time.Second)
+		fmt.Println("run")
+		return "result", nil
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "foo", task))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "bar", task))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "baz", task))
+	}()
+
+	wg.Wait()
+}
+
+// concurrently run `Group.Do()` with different keys and reached per key limit
+// output
+// run "foo"
+// result <nil>
+// run "foo"
+// result <nil>
+// nil "reached inflight limit"
+// run "bar"
+// result <nil>
+// run "bar"
+// result <nil>
+func TestConcurrentPerKeyLimitDiffKey(t *testing.T) {
+	ctx := context.Background()
+	group := NewGroup[string, any](
+		Options{
+			MaxInflightPerKey: 2,
+		},
+	)
+
+	task := func(ctx context.Context, key string) (interface{}, error) {
+		time.Sleep(1 * time.Second)
+		fmt.Println("run", key)
+		return "result", nil
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "foo", task))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "foo", task))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "foo", task))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "bar", task))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		fmt.Println(group.Do(ctx, "bar", task))
+	}()
+
+	wg.Wait()
 }
