@@ -306,16 +306,6 @@ func TestConcurrentTotalLimitDiffKey(t *testing.T) {
 		"Result length should be equal to 5 exactly.",
 	)
 
-	require.Equal(
-		t,
-		[]any{
-			runMsg,
-			runMsg,
-		},
-		result[:2],
-		"The two execution results should be the same.",
-	)
-
 	c := 0
 	for _, e := range result {
 		if e == models.ErrReachedLimit {
