@@ -101,6 +101,9 @@ func (g *Group[K, T]) Do(ctx context.Context, key K, fn Func[K, T]) (value T, er
 
 		// Wait for the in-flight call to finish
 		c.wg.Wait()
+		g.lock.Lock()
+		defer g.lock.Unlock()
+		g.inflightCount--
 		return c.val, c.err
 	}
 
